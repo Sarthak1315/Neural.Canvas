@@ -28,6 +28,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
 
   const generateImage = async () => {
     if (!prompt.trim()) {
@@ -37,67 +38,91 @@ export default function App() {
 
     setIsGenerating(true);
     setError(null);
+    setRetryMessage(null);
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      let finalPrompt = prompt;
-      if (selectedStyle !== 'none') {
-        const styleLabel = STYLES.find(s => s.id === selectedStyle)?.label;
-        finalPrompt = `${prompt}, in the style of ${styleLabel}`;
-      }
+    const maxRetries = 5;
+    let attempt = 0;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            { text: finalPrompt },
-          ],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: aspectRatio,
+    while (attempt < maxRetries) {
+      try {
+        // The AI Studio environment automatically provides a free key behind the scenes
+        // via process.env.GEMINI_API_KEY. No billing or personal key is required.
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        let finalPrompt = prompt;
+        if (selectedStyle !== 'none') {
+          const styleLabel = STYLES.find(s => s.id === selectedStyle)?.label;
+          finalPrompt = `${prompt}, in the style of ${styleLabel}`;
+        }
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [
+              { text: finalPrompt },
+            ],
           },
-        },
-      });
+          config: {
+            imageConfig: {
+              aspectRatio: aspectRatio,
+            },
+          },
+        });
 
-      let foundImage = false;
-      if (response.candidates && response.candidates[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-            const base64EncodeString = part.inlineData.data;
-            const mimeType = part.inlineData.mimeType || 'image/png';
-            setGeneratedImage(`data:${mimeType};base64,${base64EncodeString}`);
-            foundImage = true;
-            break;
+        let foundImage = false;
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+              const base64EncodeString = part.inlineData.data;
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              setGeneratedImage(`data:${mimeType};base64,${base64EncodeString}`);
+              foundImage = true;
+              break;
+            }
           }
         }
-      }
 
-      if (!foundImage) {
-        throw new Error('No image was generated. Please try a different prompt.');
+        if (!foundImage) {
+          throw new Error('No image was generated. Please try a different prompt.');
+        }
+        
+        // Success! Break out of the retry loop.
+        break;
+
+      } catch (err: any) {
+        console.error(`Generation error (Attempt ${attempt + 1}):`, err);
+        
+        const errorMessage = err.message?.toLowerCase() || '';
+        
+        // If it's a rate limit error, we wait and retry automatically
+        if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('exhausted')) {
+          attempt++;
+          if (attempt >= maxRetries) {
+            setError('The free service is currently very busy. Please try again in a few minutes.');
+            break;
+          }
+          // Wait a few seconds before retrying (exponential backoff)
+          const waitTime = attempt * 4000; // 4s, 8s, 12s...
+          setRetryMessage(`Free tier is busy. Retrying automatically in a few seconds... (Attempt ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          // For other errors (safety, etc.), show the error and stop retrying
+          if (errorMessage.includes('safety') || errorMessage.includes('policy') || errorMessage.includes('blocked')) {
+            setError('Your prompt may violate safety policies. Please try modifying your description.');
+          } else if (errorMessage.includes('too long') || errorMessage.includes('maximum context length') || errorMessage.includes('token limit')) {
+            setError('Your prompt is too long. Please try a shorter description.');
+          } else if (errorMessage.includes('500') || errorMessage.includes('internal server error') || errorMessage.includes('unavailable')) {
+            setError('The image generation service is currently experiencing issues. Please try again later.');
+          } else {
+            setError(err.message || 'Failed to generate image. Please try again.');
+          }
+          break;
+        }
       }
-    } catch (err: any) {
-      console.error('Generation error:', err);
-      
-      const errorMessage = err.message?.toLowerCase() || '';
-      
-      if (errorMessage.includes('safety') || errorMessage.includes('policy') || errorMessage.includes('blocked')) {
-        setError('Your prompt may violate safety policies. Please try modifying your description.');
-      } else if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('exhausted')) {
-        setError('Rate limit exceeded. Please wait a moment and try again.');
-      } else if (errorMessage.includes('too long') || errorMessage.includes('maximum context length') || errorMessage.includes('token limit')) {
-        setError('Your prompt is too long. Please try a shorter description.');
-      } else if (errorMessage.includes('api key') || errorMessage.includes('unauthorized') || errorMessage.includes('401') || errorMessage.includes('403')) {
-        setError('Authentication error. Please check your API key configuration.');
-      } else if (errorMessage.includes('500') || errorMessage.includes('internal server error') || errorMessage.includes('unavailable')) {
-        setError('The image generation service is currently experiencing issues. Please try again later.');
-      } else {
-        setError(err.message || 'Failed to generate image. Please try again.');
-      }
-    } finally {
-      setIsGenerating(false);
     }
+    
+    setIsGenerating(false);
+    setRetryMessage(null);
   };
 
   const handleDownload = () => {
@@ -213,7 +238,14 @@ export default function App() {
                   className="canvas-placeholder"
                 >
                   <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)] mb-4" />
-                  <span className="font-bold uppercase tracking-widest text-[var(--ink)]">Processing</span>
+                  <span className="font-bold uppercase tracking-widest text-[var(--ink)]">
+                    {retryMessage ? 'Waiting...' : 'Processing'}
+                  </span>
+                  {retryMessage && (
+                    <span className="text-xs text-[#666] mt-2 max-w-[80%] text-center">
+                      {retryMessage}
+                    </span>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div
