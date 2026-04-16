@@ -1,0 +1,6 @@
+{
+  "name": "ImageForge",
+  "description": "An AI-powered image generator using Gemini 3.1 Flash. Users can enter a text prompt, select an aspect ratio and style, and generate high-quality images.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

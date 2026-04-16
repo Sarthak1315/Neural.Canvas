@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f8f8f8;
+  --ink: #000000;
+  --accent: #ff3c00;
+  --border: #dddddd;
+  --f-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-sans);
+}
+
+.logo {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+h1.massive-title {
+  font-size: clamp(60px, 10vw, 140px);
+  line-height: 0.85;
+  font-weight: 900;
+  letter-spacing: -6px;
+  margin-bottom: 40px;
+  text-transform: uppercase;
+}
+
+.prompt-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  display: block;
+  color: #666;
+}
+
+.text-input {
+  width: 100%;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  background: transparent;
+  font-size: 24px;
+  padding: 10px 0;
+  font-weight: 400;
+  margin-bottom: 40px;
+  outline: none;
+}
+
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.style-chip {
+  border: 1px solid var(--border);
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s;
+}
+
+.style-chip.active {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+}
+
+.btn-generate {
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  width: fit-content;
+  padding: 20px 40px;
+  transition: opacity 0.2s;
+}
+.btn-generate:hover {
+  opacity: 0.9;
+}
+.btn-generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preview-canvas {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  aspect-ratio: 1/1;
+  width: 100%;
+}
+
+.preview-info {
+  position: absolute;
+  bottom: -30px;
+  right: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.5;
+  letter-spacing: 0.5px;
+}
+
+.canvas-placeholder {
+  width: 80%;
+  height: 80%;
+  background: #f0f0f0;
+  border: 1px dashed #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.plus-icon {
+  font-size: 48px;
+  font-weight: 200;
+  margin-bottom: 10px;
+}
