@@ -40,7 +40,7 @@ export default function App() {
     setError(null);
     setRetryMessage(null);
 
-    const maxRetries = 5;
+    const maxRetries = 10; // Increased max retries
     let attempt = 0;
 
     while (attempt < maxRetries) {
@@ -101,9 +101,10 @@ export default function App() {
             setError('The free service is currently very busy. Please try again in a few minutes.');
             break;
           }
-          // Wait a few seconds before retrying (exponential backoff)
-          const waitTime = attempt * 4000; // 4s, 8s, 12s...
-          setRetryMessage(`Free tier is busy. Retrying automatically in a few seconds... (Attempt ${attempt}/${maxRetries})`);
+          // Wait longer between retries to give the free tier time to recover
+          // 5s, 10s, 15s, 20s...
+          const waitTime = attempt * 5000; 
+          setRetryMessage(`Free tier is busy. Retrying automatically in ${waitTime/1000} seconds... (Attempt ${attempt}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         } else {
           // For other errors (safety, etc.), show the error and stop retrying
